@@ -1,0 +1,94 @@
+<!-- 
+Sign up page, pretty much the same as login.
+-->
+{% extends 'base.jinja' %}
+
+
+
+{% block content %} 
+    <h1>Sign Up</h1>
+    <p>Username</p>
+    <input id="username"/>
+    <p>Password</p>
+    <input id="password" type="password" /> 
+    <button onclick="signup()">Sign up</button>
+
+    <script>
+        function isValidURL(string) {
+            if (string.length == 0) {
+                return false;
+            }
+            if (string[0] == "/") {
+                return true;
+            }
+            return false;
+        }
+
+
+    function validateInput(username, password) {
+        // Check if the username is not empty and password meets the specified criteria
+        if (username.length === 0 || password.length < 6) {
+            return false;
+        }
+        // Check if the password contains at least one number, one special character, and meets the length criteria
+        if (!/(?=.*\d)(?=.*[!@#$%^&*])/.test(password)) {
+            return false;
+        }
+        return true;
+    }
+
+    // Prevent XSS attackes by escaping HTML tags
+    function sanitizeInput (input) {
+        return input.replace(/<[^>]*>?/gm, '');
+    }
+
+    // this function is identical to login(), see login.jinja
+    async function signup() {
+        // Sanitize user inputs
+        let username = sanitizeInput($("#username").val());
+        let password = sanitizeInput($("#password").val());
+
+        // Validate username and password format
+            if (!validateInput(username, password)) {
+                alert("Invalid username or password. Password must be at least 6 characters long, and contain at least one number, one special character, and one letter.");
+                return;
+            }
+
+            let signupURL = "{{ url_for('signup_user') }}";
+            
+            // Generate a random salt
+            let salt = generateSalt();
+            
+            // Hash the plaintext password
+            let hashedPassword = await hashPassword($("#password").val());
+            
+            // Concatenate the hashed password with the salt
+            let saltedHashedPassword = hashedPassword + salt;
+            
+            // Hash the salted password before sending it to the server
+            let finalHashedPassword = await hashPassword(saltedHashedPassword);
+            
+            // Send the username, final hashed password, and salt to the server
+            let res = await axios.post(signupURL, {
+                username: $("#username").val(),
+                password: finalHashedPassword,
+                salt: salt
+            });
+            
+            if (!isValidURL(res.data)) {
+                alert(res.data);
+                return;
+            } 
+            window.open(res.data, "_self");
+        }
+
+        async function hashPassword(password) {
+            let hashedPassword = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
+            return Array.from(new Uint8Array(hashedPassword)).map(byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+        function generateSalt() {
+            return crypto.getRandomValues(new Uint8Array(16)).join('');
+        }
+
+    </script>
+{% endblock %}

@@ -1,0 +1,459 @@
+<!-- 
+    Here you'll find the main exhibit: the chat application code. Feel free to look around!
+-->
+{% extends 'base.jinja' %}
+
+
+{% block content %} 
+   <style>
+    nav {
+        border-bottom: 1px solid black;
+        overflow: auto
+    }
+
+    #message_box {
+        border: 1px solid black; 
+        height: 400px; 
+        width: 800px; 
+        overflow: auto;
+        padding: 2px;
+    }
+
+    .text  {
+        margin-top: 2px;
+        margin-bottom: 2px;
+    }
+
+</style>
+
+<!--Navbar, you'll see the username here-->
+<nav style="border-bottom: 1px solid black;">
+    <ol style="float: right">
+        <li style="display:inline-block">Username:  {{ username }} </li>
+    </ol>
+    <ol style="float: left">
+        <li style="display:inline-block"><button id="returnButton">Return to Index</button></li>
+    </ol>
+</nav>
+
+<h1>Messaging App </h1>
+
+<main>
+    <!-- The messages are displayed here -->
+    <section id="message_box"></section>
+
+    <!-- These part ideally should be a form element, 
+    but I wrote this code a year ago and I don't want to break anything...-->
+    <section id="chat_box">
+        <p class="text">Chat with: </p>
+        <input id="receiver" placeholder="username">
+        <!-- MDN says its bad practice to use the onclick attribute,
+        but we're using it anyways coz its easy :)-->
+        <button onclick="join_room()">Chat</button>
+    </section>
+
+    <!-- The (message) input box is set to display: none initially, 
+    this means the input box is "invisible" initially-->
+    <section id="input_box" style="display: none" >
+        <p class="text">Message: </p>
+        <input id="message" placeholder="message">
+        <button onclick="send()">Send</button>
+        <button onclick="leave()">Leave Room</button>
+    </section>
+
+    <!-- Friend list section -->
+    <section id="friend_list">
+        <h2>Friend List</h2>
+        <ul id="friends"></ul>
+    </section>
+
+    <!-- Send friend request section -->
+    <section id="send_friend_request">
+        <h2>Send Friend Request</h2>
+        <input id="friend_username" placeholder="Friend's username">
+        <button onclick="sendFriendRequest()">Send Request</button>
+    </section>
+
+    <!-- Sent requests section -->
+    <section id="sent_requests">
+        <h2>Sent Friend Requests</h2>
+        <ul id="sent_requests_list"></ul>
+    </section>
+
+    <!-- Received requests section -->
+    <section id="received_requests">
+        <h2>Received Friend Requests</h2>
+        <ul id="received_requests_list"></ul>
+    </section>
+
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsencrypt/3.0.0-rc.1/jsencrypt.min.js"></script>
+<script src="/static/js/libs/socket.io.min.js"></script>
+<script>
+
+    // SYMMETRIC ENCRYPTION FOR MESSAGE STORAGE
+
+    function getSymmetricKey() {
+    let keyBytes = JSON.parse(sessionStorage.getItem('symmetricKey'));
+        return new Uint8Array(keyBytes);
+    }
+
+    function encryptWithSymmetricKey(data) {
+        let symmetricKey = getSymmetricKey();
+        let encryptedData = CryptoJS.AES.encrypt(data, symmetricKey, {
+            mode: CryptoJS.mode.ECB, // Using ECB mode for simplicity, consider using a more secure mode
+        });
+        return encryptedData.toString();
+    }
+
+
+    function decryptWithSymmetricKey(encryptedData) {
+        let symmetricKey = getSymmetricKey();
+        let decryptedData = CryptoJS.AES.decrypt(encryptedData, symmetricKey, {
+            mode: CryptoJS.mode.ECB, // Using ECB mode for simplicity, consider using a more secure mode
+        });
+        return decryptedData.toString(CryptoJS.enc.Utf8);
+    }
+
+    // ASYMMETRIC ENCRYPTION FOR LIVE-CHAT
+    function encryptWithPublicKey(message, publicKey) {
+        const encrypt = new JSEncrypt();
+        encrypt.setPublicKey(publicKey);
+        return encrypt.encrypt(message);
+    }
+
+    function decryptWithPrivateKey(encryptedMessage, privateKey) {
+        const decrypt = new JSEncrypt();
+        decrypt.setPrivateKey(privateKey);
+        return decrypt.decrypt(encryptedMessage);
+    }
+
+    // HMAC DH EXCHANGE
+    let p = 23;
+    let g = 5;
+
+    function generateDHPrivateKey() {
+        return Math.floor(Math.random() * 1000) + 1;
+    }
+
+    function calculateDHPublicKey(privateKey, base, prime) {
+        const DHpublicKey = BigInt(base) ** BigInt(privateKey) % BigInt(prime);
+        return DHpublicKey.toString();
+    }
+
+    function calculateSharedSecret(privateKey, receivedDHpublicKey, prime) {
+        const sharedSecret = BigInt(receivedDHpublicKey) ** BigInt(privateKey) % BigInt(prime);
+        return sharedSecret.toString();
+    }
+
+    function calculateHMAC(message, secretKey) {
+        return CryptoJS.HmacSHA256(message, secretKey).toString();
+    }
+
+
+    let room_id = 0;
+
+    // when the user presses the "Enter" key inside of the "message box", 
+    // the message is sent to the server
+    $("#message").on("keyup", (e) => {
+        if (e.key == "Enter") {
+            send();
+        }
+    })
+
+    // when the user presses the enter key inside of the "receiver box"
+    // the user joins a (socket) room
+     $("#receiver").on("keyup", (e) => {
+        if (e.key == "Enter") {
+            join_room();
+        }
+    })
+
+
+    $(document).ready(() => {
+        // room_id is undefined if the user hasn't joined a room
+        // we early return in this case
+        if (Cookies.get("room_id") == undefined) {
+            return;
+        }
+
+        // the user has already joined an existing room
+        // we'll display the message box, instead of the "Chat with: " box
+        $("#chat_box").hide();
+        $("#input_box").show();
+        room_id = parseInt(Cookies.get("room_id"));
+    })
+    
+    // Here's the Socket IO part of the code
+    // things get a bit complicated here so brace yourselves :P
+    let username = "{{ username }}";
+
+    Cookies.set('username', username);
+
+    // initializes the socket
+    const socket = io();
+
+    // an incoming message arrives, we'll add the message to the message box
+    socket.on("incoming", (msg, color="black") => {
+        if (msg.endsWith('=')) {
+            let spaceIndex = msg.indexOf(' ');
+            if (spaceIndex !== -1) {
+                let senderName = msg.slice(0, spaceIndex);
+                let encryptedMsg = msg.slice(spaceIndex + 1).trim();
+                let decryptedMsg = decryptWithSymmetricKey(encryptedMsg);
+                if (decryptedMsg) {
+                    add_message(`${senderName} ${decryptedMsg}`, color);
+                    //socket.emit("receive", senderName, username, decryptedMsg, username);  
+                }
+            } else {
+                add_message(msg, color);
+            }
+        } else if (color == "green" || color === "red") {
+            add_message(msg, color);
+        } 
+    });
+
+    let receivedPublicKey;
+    let privateKey;
+    let ogPublicKey;
+
+    let receivedDHpublickey;
+    let DHprivatekey = generateDHPrivateKey();;
+    let ogDHpublickey;
+    let DHSharedSecret;
+
+    socket.on("receiving", (msg, HMAC, color="black") => {
+
+        if (!msg.startsWith(username) && color=="black") {
+            let spaceIndex = msg.indexOf(': ');
+            if (spaceIndex !== -1) {
+                let senderName = msg.slice(0, spaceIndex);
+                let plaintext = msg.slice(spaceIndex + 1).trim();
+                let decryptedmsg = decryptWithPrivateKey(plaintext, privateKey)
+                let encryptedmsg = encryptWithSymmetricKey(decryptedmsg)
+                
+                calculatedHMAC = calculateHMAC(decryptedmsg, DHSharedSecret);
+
+                if (calculatedHMAC == HMAC) {
+                    add_message(`${senderName}: ${decryptedmsg}`, color);
+                    socket.emit("receive", senderName, username, encryptedmsg, username);
+                } else {
+                    add_message("Warning: Integrity of message NOT verified", color)
+                }
+
+
+                //add_message(`${senderName}: ${decryptedmsg}`, color);
+                //socket.emit("receive", senderName, username, encryptedmsg, username);
+
+
+            } else {
+                add_message(msg, color);
+            }
+
+        } else if (msg.startsWith(username) && color=="black") {
+            add_message(`${username}: ${$("#message").val()}`, color);
+        }
+    });
+
+    
+    // we'll send the message to the server by emitting a "send" event
+    function send() {
+        let stored_message = encryptWithSymmetricKey($("#message").val());
+        let encryptedby = username;
+
+        let message = $("#message").val();
+        let enc_message = encryptWithPublicKey(message, receivedPublicKey)
+
+        let HMAC = calculateHMAC(message, DHSharedSecret);
+
+        socket.emit("send", username, enc_message, stored_message, encryptedby, room_id, HMAC);  
+
+        
+    } 
+
+    socket.on("publicKeyBroadcast", (creator, publicKey, DHpublicKey) => {
+        if (!creator.startsWith(username)){
+            receivedPublicKey = publicKey;
+            receivedDHpublickey = DHpublicKey;
+
+            DHSharedSecret = calculateSharedSecret(DHprivatekey, receivedDHpublickey, p);
+        }
+    });
+
+
+    // we emit a join room event to the server to join a room
+    function join_room() {
+
+        const rsa = new JSEncrypt();
+        rsa.getKey();
+        ogPublicKey = rsa.getPublicKey();
+        privateKey = rsa.getPrivateKey();
+        
+        ogDHpublickey = calculateDHPublicKey(DHprivatekey, g, p);
+
+
+
+        let receiver = $("#receiver").val();
+
+        // pass in the receiver of our message to the server
+        // as well as the current user's username
+        socket.emit("join", username, receiver, ogPublicKey, ogDHpublickey,(res) => {
+            if (typeof res != "number") {
+                alert(res);
+                return;
+            }
+            // set the room id variable to the room id returned by the server
+            room_id = res;
+            Cookies.set("room_id", room_id);
+
+            // now we'll show the input box, so the user can input their message
+            $("#chat_box").hide();
+            $("#input_box").show();
+        });
+
+    }
+
+    // function when the user clicks on "Leave Room"
+    // emits a "leave" event, telling the server that we want to leave the room
+    function leave() {
+        Cookies.remove("room_id");
+        socket.emit("leave", username, room_id);
+        $("#input_box").hide();
+        $("#chat_box").show();
+    }
+
+    // function to add a message to the message box
+    // called when an incoming message has reached a client
+    function add_message(message, color) {
+        let box = $("#message_box");
+        let child = $(`<p style="color:${color}; margin: 0px;"></p>`).text(message);
+        box.append(child);
+    }
+
+
+    // Emit socket event to fetch friends
+    socket.emit('fetch_friends', username);
+
+    socket.on('friends_fetched', (data) => {
+        const friends = data.friend_usernames;
+        const friendList = document.getElementById('friends');
+
+        // Clear existing friend list
+        friendList.innerHTML = '';
+
+        // Populate friend list
+        friends.forEach((friend) => {
+            const listItem = document.createElement('li');
+            listItem.textContent = friend;
+            friendList.appendChild(listItem);
+        });
+    });
+
+
+
+    // Prevent XSS attackes by escaping HTML tags
+    function sanitizeInput (input) {
+        return input.replace(/<[^>]*>?/gm, '');
+    }
+
+    // Function to send a friend request
+    function sendFriendRequest() {
+        const friendUsername = sanitizeInput(document.getElementById('friend_username').value);
+
+        if (friendUsername.trim() === '') {
+            alert('Please enter your friend\'s username.');
+            return;
+        }
+
+        // Emit socket event to send friend request
+        socket.emit("send_friend_request", username, friendUsername);
+    }
+
+
+
+    // Handle response for sending friend request
+    socket.on('friend_request_sent', (data) => {
+        alert(data.message);
+        requestSentFriendRequests();
+    });
+
+
+
+    socket.on('sent_friend_requests', function(data) {
+        let sentRequestsList = document.getElementById('sent_requests_list');
+        sentRequestsList.innerHTML = ''; // Clear previous list items
+        data.sent_requests.forEach(function(request) {
+            let listItem = document.createElement('li');
+            listItem.textContent = `${request.receiver}`;
+            sentRequestsList.appendChild(listItem);
+        });
+    });
+
+    // Function to request sent friend requests from the server
+    function requestSentFriendRequests() {
+        socket.emit('get_sent_friend_requests', username); // Send username to the server
+    }
+
+
+    socket.on('received_friend_requests', function(data) {
+        let receivedRequestsList = document.getElementById('received_requests_list');
+        receivedRequestsList.innerHTML = ''; // Clear previous list items
+        data.received_requests.forEach(function(request) {
+            let listItem = document.createElement('li');
+            listItem.textContent = `${request.sender}`;
+
+            // Create accept and reject buttons
+            let acceptButton = document.createElement('button');
+            acceptButton.textContent = 'Accept';
+            acceptButton.addEventListener('click', function() {
+                handleFriendRequestDecision(request.sender, '{{ username }}', true);
+            });
+
+            let rejectButton = document.createElement('button');
+            rejectButton.textContent = 'Reject';
+            rejectButton.addEventListener('click', function() {
+                handleFriendRequestDecision(request.sender, '{{ username }}', false);
+            });
+
+            // Append buttons to the list item
+            listItem.appendChild(acceptButton);
+            listItem.appendChild(rejectButton);
+
+            // Append the list item to the received requests list
+            receivedRequestsList.appendChild(listItem);
+        });
+        
+    });
+
+    function requestReceivedFriendRequests() {
+        socket.emit('get_received_friend_requests', username); // Send username to the server
+    }
+
+    function handleFriendRequestDecision(sender, receiver, decision) {
+        socket.emit('friend_request_decision', { sender: sender, receiver: receiver, decision: decision });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+            requestSentFriendRequests();
+            requestReceivedFriendRequests();
+        });
+
+    document.getElementById("returnButton").addEventListener("click", function() {
+        socket.emit('userdisconnect', username);
+        window.location.href = "/"; // Replace "/" with the URL of your index page
+    });
+
+    socket.on('friend_request_decision_result', function(data) {
+        alert(data.message); // Display a message indicating whether the request was approved or rejected
+        socket.emit('fetch_friends', username);
+        requestReceivedFriendRequests();
+    });
+
+
+</script>
+{% endblock %}
+
+    

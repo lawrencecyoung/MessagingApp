@@ -1,0 +1,96 @@
+<!-- Login page -->
+{% extends 'base.jinja' %}
+
+{% block content %} 
+    <h1>Login</h1>
+    <p>Username</p>
+    <input id="username"/>
+    <p>Password</p>
+    <input id="password" type="password"/>
+    <button onclick="login()">Login</button>
+
+    <script>
+
+        // Function to hash the password using SHA-256
+        async function hashPassword(password) {
+            let hashedPassword = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
+            return Array.from(new Uint8Array(hashedPassword)).map(byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+
+        async function deriveSymmetricKey(password, salt) {
+            const iterations = 100000; // Number of iterations
+            const keyLength = 256; // Key length in bits
+            // Derive the key using PBKDF2
+            let derivedKey = await crypto.subtle.importKey(
+                'raw', 
+                new TextEncoder().encode(password),
+                { name: 'PBKDF2' },
+                false,
+                ['deriveBits']
+            );
+            let key = await crypto.subtle.deriveBits(
+                { name: 'PBKDF2', salt: new TextEncoder().encode(salt), iterations: iterations, hash: 'SHA-256' },
+                derivedKey,
+                keyLength
+            );
+            return key;
+        }
+
+        // Function to store the symmetric key in sessionStorage
+        function storeSymmetricKey(key) {
+            let keyBytes = new Uint8Array(key);
+            sessionStorage.setItem('symmetricKey', JSON.stringify(Array.from(keyBytes)));
+        }
+
+
+        // Function to check if the response is a valid URL
+        function isValidURL(string) {
+            if (string.length == 0) {
+                return false;
+            }
+            if (string[0] == "/") {
+                return true;
+            }
+            return false;
+        }
+        function sanitizeInput(input) {
+            return input.replace(/<[^>]*>?/gm, '');
+        }
+
+        
+        // Login function
+        async function login() {
+            let username = sanitizeInput($("#username").val());
+            let password = sanitizeInput($("#password").val());
+
+
+
+            let loginURL = "{{ url_for('login_user') }}";
+
+            // Hash the password before sending it to the server
+            let hashedPassword = await hashPassword($("#password").val());
+
+            // Send the username and hashed password to the server
+            let res = await axios.post(loginURL, {
+                username: $("#username").val(),
+                password: hashedPassword
+            });
+
+            // Check if the server response is a valid URL
+            if (!isValidURL(res.data)) {
+                alert(res.data);
+                return;
+            }
+
+            // Use the username as the salt
+            let salt = $("#username").val();
+            
+            // Derive a symmetric encryption key from the hashed password and the username as the salt
+            let symmetricKey = await deriveSymmetricKey(hashedPassword, salt);
+            storeSymmetricKey(symmetricKey);
+
+            // Redirect to the URL returned by the server
+            window.open(res.data, "_self")
+        }
+    </script>
+{% endblock %}
