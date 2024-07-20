@@ -1,0 +1,160 @@
+{% extends 'base.jinja' %}
+
+{% block content %} 
+<style>
+
+    body {
+        font-family: monospace;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+    }
+
+    nav {
+        background-color: #004a9a;
+        color: #fff;
+        border-bottom: 2px solid #000;
+        overflow: auto;
+        padding: 25px;
+        font-family: monospace;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    nav ol {
+        margin: 0;
+        padding: 0;
+    }
+
+    nav li {
+        display: inline-block;
+        margin: 0 10px;
+        font-size: 15px;
+    }
+
+    #returnButton {
+        padding: 8px 16px;
+        background-color: #006ce0; 
+        border: none;
+        color: #fff; 
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+        font-family: monospace;
+    }
+
+    #returnButton:hover {
+        background-color: #002b55;
+        font-family: monospace;
+    }
+
+    .username {
+        color: #fff; 
+        font-weight: bold;
+        font-family: monospace;
+         margin-right: 40px; 
+    }
+
+    form {
+        font-family: monospace;       
+        margin-top: 20px;
+        max-width: 1400px; 
+        margin: 0 auto; 
+    }
+
+    label {
+        font-weight: bold;
+    }
+
+    input[type="text"],
+    textarea {
+        width: calc(100% - 20px); 
+        padding: 10px;
+        margin-top: 5px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        font-size: 16px;
+        font-family: monospace; 
+        width: 100%;
+        white-space: pre-line;
+        word-wrap: break-word;       
+    }
+
+    input[type="submit"] {
+        background-color: #228B22; 
+        color: #fff; 
+        border: none;
+        border-radius: 4px;
+        padding: 12px 20px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s;
+        width: 100%; 
+        font-family: monospace;       
+
+    }
+
+    input[type="submit"]:hover {
+        background-color: #023020; 
+    }
+
+    h1 {
+        color: #006ce0;
+        text-align: center;
+        font-size: 35px;
+        font-family: monospace;
+        padding-top: 15px;
+    }
+</style>
+
+<nav>
+  <ol>
+    <li><button id="returnButton">Return to Repo</button></li>
+  </ol>
+  <ol>
+    <li>Username: {{ username }} ({{ role }})</li>
+  </ol>
+</nav>
+
+<h1>Create Article</h1>
+<form id="createArticleForm" action="/repo/save-article" method="post">
+    <label for="title" >Title:</label><br>
+    <input type="text" id="title" placeholder="Why INFO2222 is the best unit..." name="title"><br>
+    <label for="content">Content:</label><br>
+    <textarea id="content" name="content" placeholder="INFO2222 is my favourite unit because..." rows="15"></textarea><br>
+    <input type="submit" value="Submit">
+</form>
+
+<script src="/static/js/libs/socket.io.min.js"></script>
+<script>
+
+    let username = "{{ username }}";
+
+    const socket = io();
+
+    document.getElementById("returnButton").addEventListener("click", function() {
+        socket.emit('userdisconnect', username);
+        window.location.href = "/repo";
+    });
+
+    document.getElementById("createArticleForm").addEventListener("submit", function(event) {
+        event.preventDefault();
+        const formData = new FormData(document.getElementById("createArticleForm"));
+        
+        socket.emit('create_article', {
+            username: username,
+            title: formData.get('title'),
+            content: formData.get('content')
+        });
+        
+        socket.emit('userdisconnect', username);
+        window.location.href = "/repo";
+    });
+
+</script>
+
+{% endblock %}

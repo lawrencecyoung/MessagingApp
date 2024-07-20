@@ -1,0 +1,266 @@
+{% block content %} 
+   <style>
+    
+    body {
+        font-family: monospace;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+    }
+
+    nav {
+        background-color: #004a9a;
+        color: #fff;
+        border-bottom: 2px solid #000;
+        overflow: auto;
+        padding: 25px;
+        font-family: monospace;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    nav ol {
+        margin: 0;
+        padding: 0;
+    }
+
+    nav li {
+        display: inline-block;
+        margin: 0 10px;
+        font-size: 15px;
+    }
+
+    main {
+        display: flex;
+        justify-content: space-between;
+        margin: 20px auto;
+        max-width: 1000px;
+        padding: 20px;
+        border-radius: 5px;
+    }
+
+    section {
+        background-color: #fff;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 20px;
+        width: 45%;
+    }
+
+    h1 {
+        color: #006ce0;
+        text-align: center;
+        font-size: 30px;
+        font-family: monospace;
+        padding-top: 15px;
+    }
+
+    h2 {
+        color: #333;
+        font-size: 1.2em;
+        margin-top: 0;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #ccc;
+    }
+
+    ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    ul li {
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    button {
+        padding: 8px 12px; 
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+        background-color: #002b55;
+        color: #fff;
+    }
+
+    .button-group button {
+        margin-left: 5px;
+        font-family: monospace;
+
+    }
+
+    button#returnButton {
+        padding: 8px 16px;
+        background-color: #006ce0; 
+        border: none;
+        color: #fff; 
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+        font-family: monospace;
+    }
+
+    button#returnButton:hover {
+        background-color: #002b55;
+        font-family: monospace;
+    }
+
+    .acceptButton {
+        background-color: #228B22;
+        color: #fff;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: monospace;
+    }
+
+    .acceptButton:hover {
+        background-color: #124a1e;
+    }
+
+    .rejectButton {
+        background-color: #dc3545;
+        color: #fff;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-family: monospace;
+    }
+
+    .rejectButton:hover {
+        background-color: #c82333;
+    }
+
+
+</style>
+
+
+<nav>
+  <ol>
+    <li><button id="returnButton">Return to Home</button></li>
+  </ol>
+  <ol>
+    <li>Username: {{ username }} ({{ role }})</li>
+  </ol>
+</nav>
+
+<h1>Friend Requests</h1>
+
+<main>
+
+    <!-- Sent requests section -->
+    <section id="sent_requests">
+        <h2>Sent Friend Requests</h2>
+        <ul id="sent_requests_list"></ul>
+    </section>
+
+    <!-- Received requests section -->
+    <section id="received_requests">
+        <h2>Received Friend Requests</h2>
+        <ul id="received_requests_list"></ul>
+    </section>
+
+</main>
+
+<script src="/static/js/libs/socket.io.min.js"></script>
+<script>
+
+    let username = "{{ username }}";
+
+    // initializes the socket
+    const socket = io();
+
+    // Handle response for sending friend request
+    socket.on('friend_request_sent', (data) => {
+        alert(data.message);
+        requestSentFriendRequests();
+    });
+
+    socket.on('sent_friend_requests', function(data) {
+        let sentRequestsList = document.getElementById('sent_requests_list');
+        sentRequestsList.innerHTML = '';
+        data.sent_requests.forEach(function(request) {
+            let listItem = document.createElement('li');
+            listItem.textContent = `${request.receiver}`;
+            sentRequestsList.appendChild(listItem);
+        });
+    });
+
+    // Function to request sent friend requests from the server
+    function requestSentFriendRequests() {
+        socket.emit('get_sent_friend_requests', username); // Send username to the server
+    }
+
+
+    socket.on('received_friend_requests', function(data) {
+        let receivedRequestsList = document.getElementById('received_requests_list');
+        receivedRequestsList.innerHTML = '';
+        data.received_requests.forEach(function(request) {
+            let listItem = document.createElement('li');
+            listItem.textContent = `${request.sender}`;
+
+            // Create accept and reject buttons
+            let acceptButton = document.createElement('button');
+            acceptButton.textContent = 'Accept';
+            acceptButton.className = 'acceptButton';
+            acceptButton.addEventListener('click', function() {
+                handleFriendRequestDecision(request.sender, '{{ username }}', true);
+            });
+
+            let rejectButton = document.createElement('button');
+            rejectButton.textContent = 'Reject';
+            rejectButton.className = 'rejectButton';
+            rejectButton.addEventListener('click', function() {
+                handleFriendRequestDecision(request.sender, '{{ username }}', false);
+            });
+
+            let buttonGroup = document.createElement('div');
+            buttonGroup.classList.add('button-group');
+            buttonGroup.appendChild(acceptButton);
+            buttonGroup.appendChild(rejectButton);
+
+            // Append the button group to the list item
+            listItem.appendChild(buttonGroup);
+
+            receivedRequestsList.appendChild(listItem);
+        });
+        
+    });
+
+    function requestReceivedFriendRequests() {
+        socket.emit('get_received_friend_requests', username); // Send username to the server
+    }
+
+    function handleFriendRequestDecision(sender, receiver, decision) {
+        socket.emit('friend_request_decision', { sender: sender, receiver: receiver, decision: decision });
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+            requestSentFriendRequests();
+            requestReceivedFriendRequests();
+        });
+
+    document.getElementById("returnButton").addEventListener("click", function() {
+        socket.emit('userdisconnect', username);
+        window.location.href = "/home";
+    });
+
+    socket.on('friend_request_decision_result', function(data) {
+        alert(data.message); // display a message indicating whether the request was approved or rejected
+        socket.emit('fetch_friends', username);
+        requestReceivedFriendRequests();
+    });
+
+</script>
+{% endblock %}

@@ -1,0 +1,300 @@
+<!-- 
+    Here you'll find the main exhibit: the group chat creation page. Feel free to look around!
+-->
+{% extends 'base.jinja' %}
+
+{% block content %} 
+<style>
+    
+    body {
+        font-family: monospace;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+    }
+
+    nav {
+        background-color: #004a9a;
+        color: #fff;
+        border-bottom: 2px solid #000;
+        overflow: auto;
+        padding: 20px;
+        font-family: monospace;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    nav ol {
+        margin: 0;
+        padding: 0;
+    }
+
+    nav li {
+        display: inline-block;
+        margin: 0 10px;
+        font-size: 15px;
+    }
+
+    main {
+        max-width: 1000px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 5px;
+    }
+
+    h1 {
+        color: #006ce0;
+        text-align: center;
+        font-size: 40px;
+        font-family: monospace;
+    }
+
+    h3 {
+        color: #2a91ff;
+        text-align: center;
+        font-size: 25px;
+        margin-top: -15px;
+        font-family: monospace;
+    }
+
+    h2 {
+        font-size: 22px; 
+        margin-bottom: 10px;
+        margin-top: 50px;
+        margin-left: 20px;
+        font-family: monospace;
+        color: #000; 
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    #friend_list {
+        margin-bottom: 20px;
+        font-family: monospace;
+
+    }
+
+    #friends {
+        list-style: none;
+        padding: 0;
+        margin: 0; 
+        margin-left: 40px; 
+        font-size: 15px; 
+        
+    }
+
+    #friends li {
+        margin-bottom: 10px;
+        font-family: monospace;
+    }
+
+    button {
+        padding: 6px 15px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-top: 10px;
+        margin-left: 10px;
+        font-family: monospace;
+    }
+
+    button#returnButton {
+        padding: 8px 16px;
+        background-color: #006ce0; 
+        border: none;
+        color: #fff; 
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+        font-family: monospace;
+    }
+
+    button#returnButton:hover {
+        background-color: #002b55;
+        font-family: monospace;
+    }
+
+    #submitButton {
+        font-family: monospace;
+        margin-left: 20px
+    }
+
+    .addButton {
+        background-color: #228B22;
+        color: #fff;
+        font-family: monospace;
+
+    }
+
+    .addButton:hover {
+        background-color: #023020;
+    }
+
+    #chatNameInput {
+        width: 30%;
+        padding: 10px;
+        margin-top: 10px;
+        margin-bottom: 20px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        font-size: 16px;
+        font-family: monospace;
+        margin-left: 20px
+    }
+
+    #chatNameInput:focus {
+        outline: none;
+        border-color: #007bff; 
+    }
+</style>
+
+<nav>
+  <ol>
+    <li><button id="returnButton">Return to Home</button></li>
+  </ol>
+  <ol>
+    <li>Username: {{ username }} ({{ role }})</li>
+  </ol>
+</nav>
+
+<main>
+    <h1>Create Group Chat</h1>
+    
+    <section id="friend_list">
+        {% if role == 'Student'%}
+            <h2>Friend List</h2>
+        {% else %}
+            <h2>User List</h2>
+        {% endif %}
+        <ul id="friends"></ul>
+    </section>
+
+    <section id="groupchat_name">
+        <h2>Group Chat Name</h2>
+        <input id="chatNameInput" type="text" placeholder="Enter group chat name...">
+    </section>
+
+    
+    <!-- Submit button section -->
+    <section id="submit_button">
+        <button id="submitButton" onclick="submitGroupChat()">Submit</button>
+    </section>
+</main>
+
+<!-- Socket.io and JavaScript -->
+<script src="/static/js/libs/socket.io.min.js"></script>
+<script>
+    let selectedFriends = [];
+    let username = "{{ username }}";
+    const socket = io();
+
+    // function to add or remove friend from selected list
+    function toggleFriend(friendId, friendName) {
+        const index = selectedFriends.indexOf(friendId);
+        if (index !== -1) {
+            selectedFriends.splice(index, 1);
+            const addButton = document.getElementById(`addButton_${friendId}`);
+            if (addButton) {
+                addButton.textContent = 'Add';
+            }
+        } else {
+            selectedFriends.push(friendId);
+            const addButton = document.getElementById(`addButton_${friendId}`);
+            if (addButton) {
+                addButton.textContent = 'Remove';
+            }
+        }
+    }
+
+    // Function to submit group chat
+    function submitGroupChat() {
+        const chatName = document.getElementById('chatNameInput').value.trim();
+        if (chatName === '') {
+            alert('Please enter a group chat name.');
+            return;
+        }
+        if (selectedFriends.length === 0) {
+            alert('Please select at least one friend for the group chat.');
+            return;
+        }
+        // Send group chat creation to the server
+        socket.emit('create_group_chat', { username: username, name: chatName, members: selectedFriends });
+        window.location.href = "/home";
+    }
+
+
+    // Emit socket event to fetch friends
+    {% if role == 'Student' %}
+        socket.emit('fetch_friends', username);
+    {% endif %}
+
+
+    socket.on('friends_fetched', (data) => {
+        const friendData = data.friend_data; // Contains friend usernames and their online status
+        const friendList = document.getElementById('friends');
+        friendList.innerHTML = '';
+
+        // Populate friend list
+        Object.entries(friendData).forEach(([friend, onlineStatus]) => {
+            const listItem = document.createElement('li');
+
+            const friendInfo = document.createElement('span');
+            friendInfo.textContent = `${friend} (${onlineStatus})`; // display friend username and online status
+            listItem.appendChild(friendInfo);
+
+            const addButton = document.createElement('button');
+            addButton.textContent = 'Add';
+            addButton.id = `addButton_${friend}`;
+            addButton.addEventListener('click', function() {
+                toggleFriend(friend, friend);
+            });
+            listItem.appendChild(addButton);
+            friendList.appendChild(listItem);
+        });
+    });
+
+    {% if role != 'Student' %}
+        socket.emit('fetch_all_users');
+    {% endif %}
+
+
+    socket.on('users_fetched', (data) => {
+        const usersData = data.users_list; // Contains usernames, role, mute status, and online status
+        const usersUl = document.getElementById('friends');
+        usersUl.innerHTML = '';
+
+        // Populate friend list
+        Object.entries(usersData).forEach(([username, user]) => {
+            if (user.username !== username) {
+                const listItem = document.createElement('li');
+
+                const friendInfo = document.createElement('span');
+                friendInfo.textContent = `${username} (${user.role}: ${user.online_status})`;
+                listItem.appendChild(friendInfo);
+
+                const addButton = document.createElement('button');
+                addButton.textContent = 'Add';
+                addButton.id = `addButton_${username}`;
+                addButton.addEventListener('click', function() {
+                    toggleFriend(username, status);
+                });
+                listItem.appendChild(addButton);
+
+                usersUl.appendChild(listItem);
+            }
+        });
+    });
+
+
+    document.getElementById("returnButton").addEventListener("click", function() {
+        window.location.href = "/home";
+    });
+
+</script>
+{% endblock %}

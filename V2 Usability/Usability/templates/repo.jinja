@@ -1,0 +1,255 @@
+{% extends 'base.jinja' %}
+
+{% block content %} 
+<style>
+
+    body {
+        font-family: monospace;
+        background-color: #ffffff;
+        margin: 0;
+        padding: 0;
+    }
+
+    nav {
+        background-color: #004a9a;
+        color: #fff;
+        border-bottom: 2px solid #000;
+        overflow: auto;
+        padding: 25px;
+        font-family: monospace;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    nav ol {
+        margin: 0;
+        padding: 0;
+    }
+
+    nav li {
+        display: inline-block;
+        margin: 0 10px;
+        font-size: 15px;
+    }
+
+    h1 {
+        margin-bottom: 10px;
+        margin-top: 20px; 
+        margin-left: 30px; 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        color: #006ce0;
+        text-align: center;
+        font-size: 28px;
+        font-family: monospace;
+    }
+
+    main {
+        padding: 20px;
+    }
+
+    .article-box {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        font-family: monospace;
+        transition: background-color 0.3s;
+        position: relative; 
+    }
+
+    .article-box:hover {
+        background-color: #f0f0f0;
+    }
+
+    .article-link {
+        text-decoration: none;
+        color: #007bff; 
+        font-weight: bold;
+    }
+
+    .article-author {
+        font-style: italic;
+        color: #666;
+    }
+
+    #createArticleButton {
+        padding: 12px 20px;
+        background-color: #228B22; 
+        border: none;
+        color: #fff; 
+        text-align: center;
+        text-decoration: none;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: background-color 0.3s;
+        font-family: monospace;
+        margin-right: 20px;
+    }
+
+    #createArticleButton:hover {
+        background-color: #023020; 
+    }
+
+    #returnButton {
+        padding: 8px 16px;
+        background-color: #006ce0; 
+        border: none;
+        color: #fff; 
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+        font-family: monospace;
+    }
+
+    #returnButton:hover {
+        background-color: #002b55;
+        font-family: monospace;
+    }
+
+    .username {
+        color: #fff; 
+        font-weight: bold;
+        font-family: monospace;
+        margin-right: 20px; 
+    }
+
+    .actionButton {
+        position: absolute;
+        top: 25px;
+        right: 25px;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-family: monospace;
+    }
+
+    .deleteButton {
+        background-color: #dc3545; 
+        color: #fff; 
+        border: none;
+        transition: background-color 0.3s;
+    }
+
+    .deleteButton:hover {
+        background-color: #c82333; 
+    }
+
+    .editButton {
+        background-color: #888888; 
+        color: #fff;
+        border: none;
+        margin-right: 80px; 
+        transition: background-color 0.3s;
+    }
+
+    .editButton:hover {
+        background-color: #525252; 
+    }
+
+</style>
+
+<nav>
+  <ol>
+    <li><button id="returnButton">Return to Home</button></li>
+  </ol>
+  <ol>
+    <li>Username: {{ username }} ({{ role }})</li>
+  </ol>
+</nav>
+
+<h1>
+    Knowledge Repository Hub
+    {% if not muted %}
+    <button id="createArticleButton">Create Article</button>
+    {% endif %}
+</h1>
+
+
+<!-- Main content -->
+<main>
+    {% if muted %}
+        <!-- Warning message for muted user -->
+        <div style="background-color: #ffcccc; color: #cc0000; padding: 10px; margin-bottom: 20px;">
+            <strong>Warning:</strong> You have been muted. You cannot create articles.
+        </div>
+    {% endif %}
+    <div id="articleList"></div>
+</main>
+
+<!-- Socket.io and JavaScript -->
+<script src="/static/js/libs/socket.io.min.js"></script>
+<script>
+
+    let username = "{{ username }}";
+    let role = "{{ role }}";
+    let muted = "{{ muted }}";
+
+    // initializes the socket
+    const socket = io();
+
+    document.getElementById("returnButton").addEventListener("click", function() {
+        socket.emit('userdisconnect', username);
+        window.location.href = "/home";
+    });
+
+    
+    // Listen for the articles_fetched event
+    socket.on('articles_fetched', function(data) {
+        const articleList = document.getElementById("articleList");
+        articleList.innerHTML = "";
+        
+
+        // Iterate through fetched articles and append them to the list
+        data.articles.forEach(function(article) {
+            const articleBox = document.createElement("div");
+            articleBox.className = "article-box";
+            articleBox.innerHTML = `
+                <a class="article-link" href="/article/${article.article_id}">${article.title}</a><br>
+                <span class="article-author">by ${article.author_username} (${article.author_role}): ${article.time_stamp}</span>
+                {% if not muted %}  
+                ${role !== 'Student' || username === article.author_username ? `
+                    <button class="actionButton deleteButton" onclick="deleteArticle('${article.article_id}')">Delete</button>
+                    <button class="actionButton editButton" onclick="editArticle('${article.article_id}')">Edit</button>
+                ` : ''}
+                {% endif %}
+            `;
+            articleList.appendChild(articleBox);
+        });
+    });
+
+    
+
+    // event listener for create article button
+    {% if not muted %}
+    document.getElementById("createArticleButton").addEventListener("click", function() {
+        window.location.href = "/create_article";
+    });
+    {% endif %}
+
+    // function to delete an article
+    function deleteArticle(articleId) {
+        if (confirm("Are you sure you want to delete this article?")) {
+            socket.emit('delete_article', articleId);
+            window.location.href = `/repo`;
+        }
+    }
+
+    function editArticle(articleId) {
+        window.location.href = `/modify_article/${articleId}`;
+    }
+
+    function getRole(username) {
+        socket.emit('get_role', username);
+    }
+
+    // Request articles from the server
+    socket.emit('fetch_articles');
+
+</script>
+{% endblock %}

@@ -1,0 +1,231 @@
+{% extends 'base.jinja' %}
+
+{% block content %} 
+
+<style>
+    body {
+        font-family: monospace;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+    }
+
+    nav {
+        background-color: #004a9a;
+        color: #fff;
+        border-bottom: 2px solid #000;
+        overflow: auto;
+        padding: 20px;
+        font-family: monospace;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    nav li {
+        display: inline-block;
+        margin: 0 10px;
+        font-size: 15px;
+    }
+
+    /* Return button styles */
+    #returnButton {
+        padding: 8px 16px;
+        background-color: #0056b3; 
+        border: none;
+        color: #fff;
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+        font-family: monospace;
+    }
+
+    #returnButton:hover {
+        background-color: #004080; 
+    }
+
+    .text  {
+        margin-top: 2px;
+        margin-bottom: 2px;
+    }
+
+
+    main {
+        margin: 20px; 
+    }
+
+    h1, h2 {
+        color: #007bff; 
+    }
+
+    p {
+        margin-bottom: 10px; 
+    }
+
+    #commentForm {
+        margin-bottom: 20px;
+    }
+
+    #comment {
+        width: 98%;
+        padding: 10px; 
+        border: 1px solid #ccc; 
+        border-radius: 5px;
+    }
+
+    button[type="submit"] {
+        background-color: #228B22;
+        color: #fff;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer; 
+        font-family: monospace;
+    }
+
+    button[type="submit"]:hover {
+        background-color: #023020;
+    }
+
+    .deleteButton {
+        background-color: #dc3545;
+        color: #fff;
+        padding: 5px 10px; 
+        border: none; 
+        border-radius: 5px; 
+        cursor: pointer;
+        font-family: monospace;
+    }
+
+    .deleteButton:hover {
+        background-color: #c82333;
+    }
+
+    #comments {
+        margin-top: 20px;
+    }
+
+    #comments p {
+        margin-bottom: 5px;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 5px;
+        display: flex;
+        justify-content: space-between; 
+    }
+
+    #comments p:last-child {
+        border-bottom: none;
+    }
+
+    #comments strong {
+        color: #0056b3;
+        font-weight: bold;
+    }
+
+    .article-content {
+        white-space: pre-wrap;
+    }
+
+</style>
+
+<!--Navbar, you'll see the username here-->
+<nav>
+    <ol>
+        <li style="display:inline-block"><button id="returnButton">Return to Repo</button></li>
+    </ol>
+    
+    <ol>
+        <li style="display:inline-block">Username:  {{ username }} ({{ role }})</li>
+    </ol>
+    
+</nav>
+
+<main>
+    <h1>{{ article.title }}</h1>
+    <p><strong>Author: {{ article.author_username }} ({{ author_role }}) {{ timestamp }}</strong></p>
+    <p class="article-content">{{ article.content }}</p>
+
+    <hr style="border-top: 1px solid #ccc; margin: 20px 0;">
+
+    <!-- Comment Box -->
+    {% if not muted %}
+        <h2>Comments</h2>
+        <form id="commentForm">
+            <label for="comment">Add a comment:</label><br>
+            <textarea id="comment" name="comment" rows="3"></textarea><br>
+            <button type="submit">Submit</button>
+        </form>
+    {% endif %}
+
+    {% if muted %}
+        <!-- Warning message for muted user -->
+        <div style="background-color: #ffcccc; color: #cc0000; padding: 10px; margin-bottom: 20px;">
+            <strong>Warning:</strong> You have been muted. You cannot post comments.
+        </div>
+    {% endif %}
+
+    <!-- Display Comments -->
+    <div id="comments"></div>
+</main>
+
+<script src="/static/js/libs/socket.io.min.js"></script>
+<script>
+
+    let username = "{{ username }}";
+    let role = "{{ role }}";
+    let muted = "{{ muted }}";
+    console.log(muted)
+
+    const socket = io();
+
+    document.getElementById("returnButton").addEventListener("click", function() {
+        socket.emit('userdisconnect', username);
+        window.location.href = "/repo";
+    });
+
+    socket.on('comments_fetched', function(data) {
+        const commentsDiv = document.getElementById('comments');
+        commentsDiv.innerHTML = ''; // Clear existing comments
+        data.comments.forEach(function(comment) {
+            const commentElement = document.createElement('div');
+            commentElement.innerHTML = `
+                <p style="display: flex; justify-content: space-between;">
+                    <span style="margin-right: 10px;"><strong>${comment.author_username} (${comment.author_role}):</strong> ${comment.content}</span>
+                    ${role !== 'Student'? `<button class="deleteButton" onclick="deleteComment({{ article.article_id }}, ${comment.comment_id})">Delete</button>` : ''}
+                </p>
+            `;
+            commentsDiv.appendChild(commentElement);
+        });
+    });
+
+
+    // get comments for the article from the server
+    socket.emit('fetch_comments', {{ article.article_id }});
+
+    // submit comment form
+    document.getElementById('commentForm').addEventListener('submit', function(event) {
+        event.preventDefault();
+        const commentContent = document.getElementById('comment').value;
+        const formData = {
+            article_id: {{ article.article_id }},
+            user_username: "{{ username }}",
+            content: commentContent
+        };
+
+        // Emit event comment
+        socket.emit('create_comment', formData);
+        window.location.href = "/article/" + {{ article.article_id }}
+        document.getElementById('comment').value = '';
+
+    });
+
+    // function to delete a comment
+    function deleteComment(articleId, commentId) {
+        if (confirm("Are you sure you want to delete this comment?")) {
+            socket.emit('delete_comment', articleId, commentId);
+            window.location.href = "/article/" + articleId;
+        }
+    }
+</script>
+{% endblock %}

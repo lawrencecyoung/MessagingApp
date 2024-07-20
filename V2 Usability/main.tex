@@ -1,0 +1,161 @@
+\documentclass[12pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{listings}
+
+\begin{document}
+
+\title{INFO2222 Usability Project Report}
+\author{Devanshi Mirchandani \and Lawrence Young}
+\date{}
+\maketitle
+
+\tableofcontents
+
+\newpage
+\section{User Investigation}
+\subsection{Outline of User Investigation Process}
+To investigate our target user group, we conducted an online survey with 20 participants and held in-depth interviews with 5 students from the School of Computer Science. The survey helped us gather general insights about the challenges faced by students, while the interviews provided more detailed information about their specific needs and expectations from a support system.
+
+\subsection{Research Materials}
+The online survey consisted of 10 multiple-choice questions and 2 open-ended questions. The interview guide included 8 open-ended questions covering topics such as academic challenges, study habits, and desired features in a support system. The survey and interview questions are included in the appendix.
+
+\subsection{Persona Document}
+Based on the user investigation, we created a persona named "Alex," a second-year computer science student struggling with understanding complex programming concepts. Alex is looking for a platform to connect with peers, seek help from experienced students and staff, and access relevant learning resources.
+
+\subsection{Relevant Content for Target Persona}
+We collected a set of articles and tutorials on topics like data structures, algorithms, and software design patterns that would be helpful for students like Alex. The content sources include online tutorials, lecture notes, and blog posts from industry experts. A list of the collected content is provided in the appendix.
+
+\newpage
+\section{Navigation Design}
+\subsection{Outline of Card Sorting Session}
+We conducted an open card sorting session with 6 participants, including 4 students and 2 staff members. The participants were given a set of 20 cards representing different features and content categories and were asked to group them in a way that made sense to them. The session helped us understand the users' mental models and inform the information architecture of the website.
+
+\subsection{Information Architecture}
+Based on the card sorting results, we designed the following information architecture for the website:
+
+\begin{itemize}
+    \item Home
+    \item Messaging
+        \subitem — Friends List
+        \subitem — Chatrooms
+    \item Knowledge Repository
+        \subitem — Articles
+        \subitem — Tutorials
+        \subitem — Discussion Forum
+    \item User Profile
+        \subitem — Account Settings
+        \subitem — Notifications
+\end{itemize}
+
+\newpage
+\section{Low Fidelity or High Fidelity Prototype}
+\subsection{Prioritized List of Features}
+Based on the user investigation and card sorting, we prioritized the following features for the website:
+
+\begin{enumerate}
+    \item Enhanced messaging and friends list functionality
+    \item Multi-user chatrooms
+    \item Knowledge repository with articles and tutorials
+    \item User profiles and account management
+    \item Discussion forum for Q\&A and community engagement
+\end{enumerate}
+
+\subsection{Steps to Determine Best Design}
+We created three different wireframe designs for the website and conducted a design critique session with the team. We evaluated each design based on criteria such as usability, aesthetics, and alignment with user needs. The design that scored the highest was selected for further refinement.
+
+\subsection{Paper or Digital Prototype}
+We created a digital prototype using Figma, incorporating the selected design and prioritized features. The prototype included the main screens of the website, such as the home page, messaging interface, knowledge repository, and user profile. The prototype allowed for basic interactivity and navigation between screens.
+
+\subsection{Guerrilla Test Report}
+We conducted guerrilla usability testing with 5 participants, including 3 students and 2 staff members. The participants were asked to complete a set of tasks using the digital prototype while thinking aloud. We observed their interactions and noted any usability issues or confusion. The key findings from the guerrilla test are summarized in the appendix, along with the raw data and test materials.
+
+\newpage
+\section{Initial Implementation of Prototype}
+\subsection{Incremental Development Plan}
+We divided the implementation into two iterations:
+
+\subsubsection{Iteration \#1 (Weeks 9-10)}
+\begin{itemize}
+    \item Set up the development environment
+    \item Implement user authentication and account management
+    \item Develop the basic messaging functionality
+    \item Create the knowledge repository structure
+\end{itemize}
+
+\subsubsection{Iteration \#2 (Weeks 11-12)}
+\begin{itemize}
+    \item Enhance the messaging features (online status, group chats)
+    \item Implement article creation, editing, and commenting
+    \item Develop the user-specific feature based on user investigation
+    \item Conduct user testing and gather feedback
+\end{itemize}
+
+\subsection{Outline of Evaluations Conducted}
+During each iteration, we conducted the following evaluations:
+
+\begin{itemize}
+    \item Unit testing of individual components and features
+    \item Integration testing to ensure seamless interaction between modules
+    \item Usability testing with a small group of target users
+    \item Performance testing to assess the website's responsiveness and load times
+\end{itemize}
+
+\subsection{Demonstration of Functionalities}
+The implemented functionalities include:
+
+\begin{itemize}
+    \item User registration and login
+    \item Adding and managing friends
+    \item Sending and receiving messages in one-on-one and group chats
+    \item Creating, editing, and commenting on articles in the knowledge repository
+    \item User-specific feature: Personalized study plan generator based on user's interests and learning style
+\end{itemize}
+
+\subsection{Team Collaboration and Member Contributions}
+Our team used Github for version control and collaborated using Github project boards for task management. We held weekly meetings to discuss progress, challenges, and next steps. 
+
+\bigskip
+\noindent \underline{Each team member contributed to different aspects of the project}:
+
+\begin{itemize}
+    \item \textbf{ Devanshi:} Frontend/backend development, UI/UX design, and usability testing
+    \item \textbf{ Lawrence:} Frontend/backend development, database design, and integration testing
+\end{itemize}
+
+\newpage
+\section{Final Evaluation and Future Extensions}
+\subsection{User Acceptance Testing Results}
+We conducted user acceptance testing with a group of 10 students and staff members. The participants were asked to use the fully implemented website and provide feedback on its usability, functionality, and overall value. The results showed a high level of satisfaction, with 80\% of participants rating the website as "very useful" or "extremely useful." The detailed feedback and suggestions are summarized in the appendix.
+
+\subsection{Final Evaluation}
+Based on the user feedback and our own assessment, we believe that the website meets the core requirements and provides a valuable support system for computer science students. The usability enhancements, knowledge repository, and user-specific features address the key needs identified during the user investigation phase.
+
+\subsection{Future Features and Extensions}
+Some potential features and extensions for the future include:
+
+\begin{itemize}
+    \item Integration with the university's learning management system
+    \item Gamification elements to encourage engagement and participation
+    \item Personalised recommendations for articles and resources based on user preferences
+    \item Mobile app version of the website for improved accessibility
+\end{itemize}
+
+\newpage
+\section{Conclusion}
+In conclusion, the INFO2222 Usability Project allowed us to apply user-centred design principles and agile development methodologies to create a website support system for computer science students. Through user investigation, iterative design, and continuous evaluation, we developed a solution that addresses the key challenges faced by students and provides a platform for knowledge sharing and community support. The project also helped us strengthen our skills in web development, usability testing, and team collaboration.
+
+\appendix
+\section{Code Repository}
+\href{https://github.com/devanshimirchandani/INFO2222-A2-Usability}{GitHub Repository Link}
+
+\section{Additional Materials}
+\begin{itemize}
+    \item Survey questions and results
+    \item Interview transcripts
+    \item Guerrilla test data and findings
+    \item User acceptance testing feedback summary
+\end{itemize}
+
+\end{document}

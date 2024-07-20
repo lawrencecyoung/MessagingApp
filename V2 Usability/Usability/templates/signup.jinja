@@ -1,0 +1,175 @@
+{% extends 'base.jinja' %}
+
+{% block content %} 
+    <div class="signup-container">
+        <h1>Sign Up</h1>
+        <form id="signup-form">
+            <div class="form-group">
+                <label for="username">Username:</label>
+                <input id="username" name="username" type="text" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input id="password" name="password" type="password" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="role">Role:</label>
+                <select id="role" name="role" class="form-control" required>
+                    <option value="Student">Student</option>
+                    <option value="Staff - Academics">Staff: Academics</option>
+                    <option value="Staff - Administrative">Staff: Administrative</option>
+                    <option value="Admin">Admin User</option>
+                </select>
+            </div>
+            <button type="button" onclick="signup()" class="btn btn-primary">Let's sign up!</button>
+        </form>
+    </div>
+
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: monospace;
+
+        }
+
+        .signup-container {
+            max-width: 400px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            font-family: monospace;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            font-family: monospace;
+
+        }
+
+        label {
+            font-weight: bold;
+            font-family: monospace;
+
+        }
+
+        input[type="text"],
+        input[type="password"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: monospace;
+
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: #fff;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            font-family: monospace;
+
+
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+    </style>
+
+    <script>
+        function isValidURL(string) {
+            if (string.length == 0) {
+                return false;
+            }
+            if (string[0] == "/") {
+                return true;
+            }
+            return false;
+        }
+
+
+    function validateInput(username, password) {
+        // Check if the username is not empty and password meets the specified criteria
+        if (username.length === 0 || password.length < 6) {
+            return false;
+        }
+        // Check if the password contains at least one number, one special character, and meets the length criteria
+        if (!/(?=.*\d)(?=.*[!@#$%^&*])/.test(password)) {
+            return false;
+        }
+        return true;
+    }
+
+    // Prevent XSS attackes by escaping HTML tags
+    function sanitizeInput (input) {
+        return input.replace(/<[^>]*>?/gm, '');
+    }
+
+    // this function is identical to login(), see login.jinja
+    async function signup() {
+        // Sanitize user inputs
+        let username = sanitizeInput($("#username").val());
+        let password = sanitizeInput($("#password").val());
+
+        // Validate username and password format
+            if (!validateInput(username, password)) {
+                alert("Invalid username or password. Password must be at least 6 characters long, and contain at least one number, one special character, and one letter.");
+                return;
+            }
+
+            let signupURL = "{{ url_for('signup_user') }}";
+            
+            // Generate a random salt
+            let salt = generateSalt();
+            
+            // Hash the plaintext password
+            let hashedPassword = await hashPassword($("#password").val());
+            
+            // Concatenate the hashed password with the salt
+            let saltedHashedPassword = hashedPassword + salt;
+            
+            // Hash the salted password before sending it to the server
+            let finalHashedPassword = await hashPassword(saltedHashedPassword);
+
+            let role = $("#role").val()
+            
+            // Send the username, final hashed password, and salt to the server
+            let res = await axios.post(signupURL, {
+                username: $("#username").val(),
+                password: finalHashedPassword,
+                salt: salt,
+                role: role
+            });
+            
+            if (!isValidURL(res.data)) {
+                alert(res.data);
+                return;
+            } 
+            window.open(res.data, "_self");
+        }
+
+        async function hashPassword(password) {
+            let hashedPassword = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(password));
+            return Array.from(new Uint8Array(hashedPassword)).map(byte => byte.toString(16).padStart(2, '0')).join('');
+        }
+        function generateSalt() {
+            return crypto.getRandomValues(new Uint8Array(16)).join('');
+        }
+
+    </script>
+{% endblock %}

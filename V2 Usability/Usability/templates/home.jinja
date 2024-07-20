@@ -1,0 +1,563 @@
+<!-- 
+    Here you'll find the main exhibit: the chat application code. Feel free to look around!
+-->
+
+{% extends 'base.jinja' %}
+
+{% block content %} 
+   <style>
+
+    body {
+        font-family: monospace;
+        background-color: #f4f4f4;
+        margin: 0;
+        padding: 0;
+    }
+
+    nav {
+        background-color: #004a9a;
+        color: #fff;
+        border-bottom: 2px solid #000;
+        overflow: auto;
+        padding: 20px;
+        font-family: monospace;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    nav ol {
+        margin: 0;
+        padding: 0;
+    }
+
+    nav li {
+        display: inline-block;
+        margin: 0 10px;
+        font-size: 15px;
+    }
+
+    main {
+        max-width: 1000px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 5px;
+    }
+
+    h1 {
+        color: #006ce0;
+        text-align: center;
+        font-size: 40px;
+        font-family: monospace;
+    }
+
+    h3 {
+        color: #2a91ff;
+        text-align: center;
+        font-size: 25px;
+        margin-top: -15px;
+        font-family: monospace;
+    }
+
+    h2 {
+        font-size: 22px; 
+        margin-bottom: 10px;
+        margin-top: 50px;
+        margin-left: 20px;
+        font-family: monospace;
+        color: #000; 
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+
+    button {
+        padding: 6px 15px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-top: 10px;
+        margin-left: 10px;
+        font-family: monospace;
+    }
+
+    button#returnButton {
+        padding: 8px 16px;
+        background-color: #006ce0; 
+        border: none;
+        color: #fff; 
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+        font-family: monospace;
+    }
+
+    button#returnButton:hover {
+        background-color: #002b55;
+        font-family: monospace;
+    }
+
+    button#goToRepoButton {
+        padding: 8px 16px;
+        background-color: #2a91ff; 
+        border: none;
+        color: #fff; 
+        font-size: 16px;
+        cursor: pointer;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+        font-family: monospace;
+    }
+
+    button#goToRepoButton:hover {
+        background-color: #002b55;
+        font-family: monospace;
+    }
+
+    section {
+        margin-bottom: 20px;
+    }
+
+    input[type="text"] {
+        width: calc(100% - 70px);
+        padding: 10px;
+        margin-top: 5px;
+        margin-bottom: 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        font-size: 16px;
+        font-family: monospace;
+    }
+
+    #message_box {
+        border: 1px solid #ccc; 
+        height: 400px; 
+        width: 98%; 
+        overflow: auto;
+        padding: 10px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        font-family: monospace;
+    }
+
+
+    ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        margin-left: 20px;
+        font-family: monospace;
+    }
+
+    ul li {
+        margin-bottom: 5px;
+        font-family: monospace;
+    }
+
+    .deleteButton {
+        background-color: #dc3545;
+        color: #fff;
+        padding: 5px 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-family: monospace;
+    }
+
+    .deleteButton:hover {
+        background-color: #c82333;
+        font-family: monospace;
+    }
+    .friendButton {
+        display: inline-block;
+        padding: 6px 15px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        margin-left: 10px;
+        font-family: monospace;
+    }
+
+    span {
+        margin-right: 30px; 
+    }
+
+    .chat-item {
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        font-family: monospace;
+        transition: background-color 0.3s;
+        position: relative; 
+    }
+
+    button.leaveButton{
+        background-color: #dc3545; 
+        color: #fff; 
+        font-family: monospace;
+    }
+
+    button.groupChatButton.joinButton {
+        background-color: #228B22;
+        color: #fff;
+        font-family: monospace;
+    }
+
+    
+
+</style>
+
+<nav>
+  <ol>
+    <li><button id="returnButton">Return to Index</button></li>
+    <li><button id="goToRepoButton">Repository Hub</button></li>
+  </ol>
+  <ol>
+    <li>Username: {{ username }} ({{ role }})</li>
+  </ol>
+</nav>
+
+<main>
+    <h1>INFOMessenger</h1>
+    <h3>Welcome, {{username}}</h3>
+
+    <section id="chat_list">
+        <h2>Groupchats List</h2>
+        <ul id="chat_list"></ul>
+    </section>
+
+    {% if not muted %}
+        <button style="font-family: monospace; margin-left: 20px;" id="createChatButton">Create Group Chat</button>
+    {% endif %}
+
+    {% if muted %}
+        <!-- Warning message for muted user -->
+        <div style="background-color: #ffcccc; color: #cc0000; padding: 10px; margin-bottom: 20px;">
+            <strong>Warning:</strong> You have been muted. You cannot create chat.
+        </div>
+    {% endif %}
+
+
+    {% if role != 'Student' and role != 'Admin'%}
+    <!-- All students list section -->
+    <section id="all_students">
+        <h2>All Students</h2>
+        <ul id="students"></ul>
+    </section>
+    {% elif role == 'Admin' %}
+    <section id="all_users">
+        <h2>All Users</h2>
+        <ul id="users"></ul>
+    </section>
+    {% endif %}
+
+    {% if role == 'Student' %}
+    <!-- Friend list section -->
+    <section id="friend_list">
+        <h2>Friend List</h2>
+        <ul id="friends"></ul>
+        <button style="font-family: monospace; margin-left: 20px;" onclick="viewFriendRequests()">View Friend Requests</button>
+    </section>
+
+    <!-- Send friend request section -->
+    <section id="send_friend_request">
+        <h2>Send Friend Request</h2>
+        <input id="friend_username" type="text" placeholder="Friend's username" style="width: 300px; margin-left: 20px;">
+        <button style="font-family: monospace;" onclick="sendFriendRequest()">Send Request</button>
+    </section>
+    {% endif %}
+    
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsencrypt/3.0.0-rc.1/jsencrypt.min.js"></script>
+<script src="/static/js/libs/socket.io.min.js"></script>
+<script>
+
+    function viewFriendRequests() {
+        window.location.href = "/friend_requests"; // Change the URL to the page where friend requests are viewed
+    }
+
+    // Here's the Socket IO part of the code
+    // things get a bit complicated here so brace yourselves :P
+    let username = "{{ username }}";
+    let muted = "{{ muted }}";
+    console.log(muted)
+
+    Cookies.set('username', username);
+
+    // initializes the socket
+    const socket = io();
+
+    socket.emit('fetch_group_chats', username);
+
+    socket.on('group_chat_fetched', (data) => {
+        const groupChatData = data.groupchat_list;
+        const groupChatList = document.getElementById('chat_list');
+
+        // Clear existing group chat list
+        groupChatList.innerHTML = '';
+
+        // Populate group chat list
+        groupChatData.forEach((groupchat) => {
+            const listItem = document.createElement('li');
+            listItem.classList.add('chat-item');
+            listItem.style.listStyleType = 'none';
+            listItem.style.display = 'flex';
+
+            const groupChatName = document.createElement('span');
+            groupChatName.textContent = groupchat.group_name; // display group chat name
+            groupChatName.style.fontWeight = 'bold';
+            listItem.appendChild(groupChatName);
+
+            const members = document.createElement('span');
+            
+            let string = "";
+            groupchat.participants.forEach(user => {
+                string += `${user[0]} (${user[1]}), `;
+            });
+            string = string.slice(0, -2);
+
+            members.textContent = `Members: ${string}`;
+            listItem.appendChild(members);
+
+            // create button to join group chat
+            const joinButton = document.createElement('button');
+            joinButton.textContent = 'Join';
+            joinButton.classList.add('groupChatButton', 'joinButton');
+            joinButton.addEventListener('click', function() {
+                redirectToGroupchat(username, groupchat.group_name);
+            });
+
+            // crreate button to leave group chat
+            const leaveButton = document.createElement('button');
+            leaveButton.textContent = 'Leave';
+            leaveButton.classList.add('groupChatButton', 'leaveButton');
+            leaveButton.addEventListener('click', function() {
+                leave_groupchat(username, groupchat.chat_id);
+            });
+
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.marginLeft = 'auto';
+            buttonContainer.appendChild(joinButton);
+            buttonContainer.appendChild(leaveButton);
+            listItem.appendChild(buttonContainer);
+
+            groupChatList.appendChild(listItem);
+        });
+
+
+
+    });
+
+    function redirectToGroupchat(username, groupchat_name) {
+        window.location.href = "/groupchat_message/" + username + "/" + groupchat_name;
+    }
+
+    function leave_groupchat(username, chat_id) {
+        socket.emit('leave_groupchat', username, chat_id);
+        window.location.href = "/home";
+    }
+
+    // emit socket event to fetch friends
+    {% if role == 'Student' %}
+        socket.emit('fetch_friends', username);
+    {% endif %}
+
+    socket.on('friends_fetched', (data) => {
+        const friendData = data.friend_data; // contains friend usernames and their online status
+        const friendList = document.getElementById('friends');
+
+        friendList.innerHTML = '';
+
+        // Populate friend list
+        Object.entries(friendData).forEach(([friend, onlineStatus]) => {
+            const listItem = document.createElement('li');
+
+            const friendInfo = document.createElement('span');
+            friendInfo.textContent = `${friend} (${onlineStatus})`; // Display friend username and online status
+            listItem.appendChild(friendInfo);
+
+            // Create remove button
+            const removeButton = document.createElement('button');
+            removeButton.textContent = 'Remove';
+            removeButton.classList.add('leaveButton');
+            removeButton.addEventListener('click', function() {
+                removeFriend(friend);
+            });
+
+            // create chat button
+            const chatButton = document.createElement('button');
+            chatButton.textContent = 'Chat';
+            chatButton.classList.add('groupChatButton', 'joinButton');            
+            chatButton.addEventListener('click', function() {
+            redirectToPrivateMessage(username, friend);
+            });
+
+            // append buttons to the list item
+            listItem.appendChild(removeButton);
+            listItem.appendChild(chatButton);
+            friendList.appendChild(listItem);
+        });
+    });
+
+
+
+    function removeFriend(friendUsername) {
+        // Emit socket event to remove friend
+        socket.emit('remove_friend', username, friendUsername);
+    }
+
+    function redirectToPrivateMessage(username, friend_username) {
+        window.location.href = "/private_message/" + username + "/" + friend_username;
+    }
+
+
+
+    socket.on('friend_removed', (data) => {
+        alert(data.message);
+        socket.emit('fetch_friends', username);
+    });
+
+    
+    socket.on('update_online_users', function(data) {
+        const onlineUsersList = data.online_users;
+    });
+
+
+    // Prevent XSS attackes by escaping HTML tags
+    function sanitizeInput (input) {
+        return input.replace(/<[^>]*>?/gm, '');
+    }
+
+    // Function to send a friend request
+    function sendFriendRequest() {
+        const friendUsername = sanitizeInput(document.getElementById('friend_username').value);
+
+        if (friendUsername.trim() === '') {
+            alert('Please enter your friend\'s username.');
+            return;
+        }
+
+        // Emit socket event to send friend request
+        socket.emit("send_friend_request", username, friendUsername);
+    }
+
+
+
+    // Handle response for sending friend request
+    socket.on('friend_request_sent', (data) => {
+        alert(data.message);
+    });
+
+
+    document.getElementById("returnButton").addEventListener("click", function() {
+        socket.emit('userdisconnect', username);
+        window.location.href = "/"; // Replace "/" with the URL of your index page
+    });
+
+    document.getElementById("goToRepoButton").addEventListener("click", function() {
+        window.location.href = "/repo"; // Replace "/" with the URL of your index page
+    });
+
+    
+
+    socket.on('students_fetched', (data) => {
+        const studentsData = data.students_list; // Contains student usernames, mute status, and online status
+        const studentsUl = document.getElementById('students');
+
+        // Clear existing student list
+        studentsUl.innerHTML = '';
+
+        // Populate student list
+        Object.keys(studentsData).forEach(username => {
+            const student = studentsData[username];
+            const listItem = document.createElement('li');
+            listItem.textContent = `${username} (${student.online_status})`; // Display student username and online status
+
+            // Create mute/unmute button
+            const muteButton = document.createElement('button');
+            muteButton.textContent = student.mute_status ? 'Unmute' : 'Mute'; // Button text based on mute status
+            muteButton.addEventListener('click', function() {
+                toggleMute(username, !student.mute_status);
+            });
+
+            // Append mute/unmute button to the list item
+            listItem.appendChild(muteButton);
+            studentsUl.appendChild(listItem);
+        });
+    });
+
+
+
+    socket.on('users_fetched', (data) => {
+        const usersData = data.users_list; // Contains usernames, role, mute status, and online status
+        const usersUl = document.getElementById('users');
+
+        // Clear existing user list
+        usersUl.innerHTML = '';
+
+        // Populate user list
+        Object.keys(usersData).forEach(username => {
+            const user = usersData[username];
+            const listItem = document.createElement('li');
+            listItem.textContent = `${username} (${user.role} : ${user.online_status})`;
+
+            // Create mute/unmute button
+            const muteButton = document.createElement('button');
+            muteButton.textContent = user.mute_status ? 'Unmute' : 'Mute'; // Button text based on mute status
+            muteButton.addEventListener('click', function() {
+                toggleMute(username, !user.mute_status);
+            });
+            listItem.appendChild(muteButton);
+
+            // Create delete button
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.classList.add('leaveButton');
+            deleteButton.addEventListener('click', function() {
+                socket.emit('delete_user', username);
+                window.location.href = "/home";
+            });
+            listItem.appendChild(deleteButton);
+
+            usersUl.appendChild(listItem);
+        });
+    });
+
+
+    {% if role != 'Student' and role != 'Admin' %}
+        socket.emit('fetch_all_students');
+    {% endif %}
+
+    {% if role == 'Admin' %}
+        socket.emit('fetch_all_users');
+    {% endif %}
+
+
+    function toggleMute(studentUsername, muteStatus) {
+        socket.emit('toggle_mute_status', studentUsername, muteStatus);
+        {% if role != 'Student' and role != 'Admin' %}
+            socket.emit('fetch_all_students');
+        {% endif %}
+        {% if role == 'Admin' %}
+            socket.emit('fetch_all_users');
+        {% endif %}
+    }
+
+    {% if not muted %}    
+        document.getElementById("createChatButton").addEventListener("click", function() {
+            window.location.href = "/create_group_chat";
+        });
+    {% endif %}
+
+</script>
+{% endblock %}
